@@ -5,7 +5,7 @@ The project contains example code in the ft2play folder on how to interface with
 # Notes
 - This is <i>not</i> the same replayer/mixer code used in the FT2 clone
 - The accuracy has only been compared against a few songs
-- The code may not be 100% safe for use as a replayer in other projects, and as such I recommend to use this only for reference
+- The code may not be 100% safe to use as a replayer in other projects, and as such I recommend to use this only for reference
 
 # How to test accuracy
 1) Open FT2.08 or FT2.09 (use a fresh program start for every render) and load a song. Make sure "16-bit mixing", "Stereo" and "Interpolation" is enabled in the config screen.

@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30523.141
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ft2play", "ft2play.vcxproj", "{91B645FD-82AF-44D4-9D0A-CD74BC0CAC3C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{91B645FD-82AF-44D4-9D0A-CD74BC0CAC3C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{91B645FD-82AF-44D4-9D0A-CD74BC0CAC3C}.Debug|Win32.Build.0 = Debug|Win32
+		{91B645FD-82AF-44D4-9D0A-CD74BC0CAC3C}.Release|Win32.ActiveCfg = Release|Win32
+		{91B645FD-82AF-44D4-9D0A-CD74BC0CAC3C}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0302C100-588F-45AD-8EBB-D1D343CEC87B}
+	EndGlobalSection
+EndGlobal

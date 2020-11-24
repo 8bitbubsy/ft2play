@@ -1,0 +1,30 @@
+---- How to write your own audio driver for ft2play ----
+
+1) Include the header "../../pmp_mix.h"
+
+2) Implement the following functions using your audio API of choice:
+
+  void lockMixer(void); // waits for the current mixing block to finish and disables further mixing
+  void unlockMixer(void); // enables mixing again
+  bool openMixer(int32_t mixingFrequency, int32_t mixingBufferSize); // 8000..96000, 256..8192 (true if ok, false if fail)
+  void closeMixer(void);
+
+3) When the audio API is requesting samples, make a call to mix_UpdateBuffer(), f.ex.:
+
+  mix_UpdateBuffer((int16_t *)stream, len / 4);
+  
+4) Make your own preprocessor define (f.ex. AUDIODRIVER_ALSA) and pass it to the compiler during compilation
+   (also remember to add the correct driver .c file to the compilation script)
+
+5) In "pmplay.h", insert your preprocessor define and include in the "AUDIO DRIVERS" #ifdef chain and
+   include your audio driver header in there.
+   
+NOTE:
+  lockMixer() should be implemented in a way where you wait until the mix_UpdateBuffer() call has finished (important),
+  then you block further calls to mix_UpdateBuffer() until the mixer is unlocked again.
+  You should not send zeroes to the audio device while it's locked, as the lock/unlock pairs are usually called within
+  a very short time frame anyway.
+  
+-------------------------------------------------------
+
+You can look at audiodrivers/sdl/sdldriver.c if you need some references...

@@ -3,6 +3,7 @@ Bit-accurate C port of FT2.09's XM replayer (SB16/WAV render mode). \
 The project contains example code in the ft2play folder on how to interface with the API.
 
 # Notes
+- To compile ft2play (the test program) on macOS/Linux, you need SDL2
 - The replayer is the same in FT2.08 and FT2.09 (though the GUS routines differ in FT2.09)
 - This is <i>not</i> the same replayer/mixer code used in the FT2 clone (the FT2 clone also uses a port, but it has some audio fidelity improvements)
 - The accuracy has only been compared against a few songs

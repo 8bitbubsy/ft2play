@@ -340,7 +340,7 @@ static void freeInstr(uint16_t nr)
 	}
 
 	free(ins);
-	ins = NULL;
+	instr[nr] = NULL;
 }
 
 static void freeAllInstr(void)

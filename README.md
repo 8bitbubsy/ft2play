@@ -7,7 +7,7 @@ The project contains example code in the ft2play folder on how to interface with
 - This is <i>not</i> the same replayer/mixer code used in the FT2 clone (the FT2 clone also uses a port, but it has some audio precision improvements)
 - The accuracy has only been compared against a few songs
 - The code may not be 100% safe to use as a replayer in other projects, and as such I recommend to use this only for reference
-- The mixing amplification is set to 4x per default (same value as FT2), and this is a bit low. I recommend doing <code>setAmp(10)</code> before <code>startPlaying()</code>.
+- The mixing amplification is set to 4x per default (same value as FT2), and this is a bit low. I recommend calling <code>setAmp(10)</code> after <code>initMusic()</code>.
 
 # How to test accuracy
 1) Open FT2.08 or FT2.09 (use a fresh program start for every render) and load an XM/MOD module. Make sure "16-bit mixing", "Stereo" and "Interpolation" are enabled in the config screen

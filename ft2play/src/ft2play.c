@@ -20,7 +20,7 @@
 #define DEFAULT_VRAMP_FLAG true
 
 // set to true if you want ft2play to always render to WAV
-#define DEFAULT_WAVRENDER_MODE_FLAG false 
+#define DEFAULT_WAVRENDER_MODE_FLAG false
 
 // default settings
 static bool renderToWavFlag = DEFAULT_WAVRENDER_MODE_FLAG;

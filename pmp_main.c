@@ -1267,16 +1267,16 @@ static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 
 	for (int32_t i = 0; i < 8; i++)
 	{
-		tmpPeriod = (((loPeriod + hiPeriod) >> 1) & 0xFFFFFFF0) + fineTune;
+		tmpPeriod = (((loPeriod + hiPeriod) >> 1) & ~15) + fineTune;
 
 		int32_t lookUp = tmpPeriod - 8;
 		if (lookUp < 0)
 			lookUp = 0; // 8bb: safety fix (C-0 w/ finetune <= -65)
 
 		if (period >= note2Period[lookUp])
-			hiPeriod = (tmpPeriod - fineTune) & 0xFFFFFFF0;
+			hiPeriod = (tmpPeriod - fineTune) & ~15;
 		else
-			loPeriod = (tmpPeriod - fineTune) & 0xFFFFFFF0;
+			loPeriod = (tmpPeriod - fineTune) & ~15;
 	}
 
 	tmpPeriod = loPeriod + fineTune + (arpNote << 4);

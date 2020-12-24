@@ -1,5 +1,5 @@
 # ft2play
-Direct, bit-accurate C port of Fasttracker 2.09's XM replayer (SB16/WAV render mode). \
+Bit-accurate C port of Fasttracker 2.09's XM replayer (SB16/WAV render mode). \
 The project contains example code in the ft2play folder on how to interface with the API.
 
 # Notes

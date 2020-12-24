@@ -253,7 +253,9 @@ static void fixSample(sampleTyp *s)
 static void checkSampleRepeat(int32_t nr, int32_t nr2)
 {
 	instrTyp *i = instr[nr];
-	if (i == NULL) return;
+	if (i == NULL)
+		return;
+
 	sampleTyp *s = &i->samp[nr2];
 
 	if (s->repS < 0) s->repS = 0;
@@ -674,7 +676,8 @@ static bool loadMusicMOD(MEMFILE *f)
 	songMOD15HeaderTyp *h_MOD15 = (songMOD15HeaderTyp *)ha;
 
 	mread(ha, sizeof (ha), 1, f);
-	if (meof(f)) goto loadError2;
+	if (meof(f))
+		goto loadError2;
 
 	memcpy(song.name, h_MOD31->name, 20);
 	song.name[20] = '\0';
@@ -724,7 +727,8 @@ static bool loadMusicMOD(MEMFILE *f)
 
 	song.antInstrs = ai; // 8bb: added this
 
-	if (meof(f)) goto loadError2;
+	if (meof(f))
+		goto loadError2;
 
 	int32_t b = 0;
 	for (int32_t a = 0; a < 128; a++)
@@ -741,8 +745,10 @@ static bool loadMusicMOD(MEMFILE *f)
 			goto loadError;
 
 		pattLens[a] = 64;
+
 		mread(pattBuf, 1, song.antChn * 4 * 64, f);
-		if (meof(f)) goto loadError;
+		if (meof(f))
+			goto loadError;
 
 		// convert pattern
 		uint8_t *bytes = pattBuf;
@@ -905,17 +911,19 @@ bool loadMusicFromData(const uint8_t *data, uint32_t dataLength) // .XM/.MOD/.FT
 	freeMusic();
 	setFrqTab(false);
 
+	moduleLoaded = false;
+
+	f = mopen(data, dataLength);
+	if (f == NULL)
+		return false;
+
 	// 8bb: instr 0 is a placeholder for empty instruments
 	allocateInstr(0);
 	instr[0]->samp[0].vol = 0;
 
-	moduleLoaded = false;
-
-	f = mopen(data, dataLength);
-	if (f == NULL) return false;
-
 	mread(&h, sizeof (h), 1, f);
-	if (meof(f)) goto loadError2;
+	if (meof(f))
+		goto loadError2;
 
 	if (memcmp(h.sig, "Extended Module: ", 17) != 0)
 	{
@@ -930,7 +938,8 @@ bool loadMusicFromData(const uint8_t *data, uint32_t dataLength) // .XM/.MOD/.FT
 	}
 
 	mseek(f, 60+h.headerSize, SEEK_SET);
-	if (meof(f)) goto loadError2;
+	if (meof(f))
+		goto loadError2;
 
 	memcpy(song.name, h.name, 20);
 	song.name[20] = '\0';
@@ -976,8 +985,11 @@ bool loadMusicFromData(const uint8_t *data, uint32_t dataLength) // .XM/.MOD/.FT
 
 		for (i = 1; i <= h.antInstrs; i++)
 		{
-			if (!loadInstrHeader(f, i)) goto loadError;
-			if (!loadInstrSample(f, i)) goto loadError;
+			if (!loadInstrHeader(f, i))
+				goto loadError;
+
+			if (!loadInstrSample(f, i))
+				goto loadError;
 		}
 	}
 

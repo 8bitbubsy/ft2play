@@ -378,7 +378,7 @@ static void setGlobaVol(stmTyp *ch, uint8_t param)
 	song.globVol = param;
 
 	stmTyp *c = stm;
-	for (int32_t i = 0; i < song.antChn; i++, c++) // 8bb: update all voice volumes
+	for (int32_t i = 0; i < song.antChn; i++, c++) // 8bb: this updates the volume for all voices
 		c->status |= IS_Vol;
 
 	(void)ch;
@@ -830,8 +830,9 @@ static void checkEffects(stmTyp *ch) // tick0 effect handling
 
 	// normal effects
 	const uint8_t param = ch->eff;
+
 	if ((ch->effTyp == 0 && param == 0) || ch->effTyp > 35)
-		return; // no effect
+		return;
 
 	// 8bb: this one has to be done here instead of in the jumptable, as it needs the "newVolKol" parameter (FT2 quirk)
 	if (ch->effTyp == 27)
@@ -1098,7 +1099,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 			vol = (envVal * ch->outVol * ch->fadeOutAmp) >> (16+2);
 			vol = (vol * song.globVol) >> 7;
 
-			ch->status |= IS_Vol; // 8bb: update vol every tick because vol envelope is enabled
+			ch->status |= IS_Vol; // 8bb: this updates vol on every tick (because vol envelope is enabled)
 		}
 		else
 		{
@@ -1541,7 +1542,7 @@ static void globalVolSlide(stmTyp *ch, uint8_t param)
 	song.globVol = newVol;
 
 	stmTyp *c = stm;
-	for (int32_t i = 0; i < song.antChn; i++, c++) // 8bb: update all voice volumes
+	for (int32_t i = 0; i < song.antChn; i++, c++) // 8bb: this updates the volume for all voices
 		c->status |= IS_Vol;
 }
 
@@ -1723,7 +1724,9 @@ static void doEffects(stmTyp *ch) // tick>0 effect handling
 	if (volKolEfx > 0)
 		VJumpTab_TickNonZero[volKolEfx](ch);
 
-	if ((ch->eff == 0 && ch->effTyp == 0) || ch->effTyp > 35) return;
+	if ((ch->eff == 0 && ch->effTyp == 0) || ch->effTyp > 35)
+		return;
+
 	JumpTab_TickNonZero[ch->effTyp](ch, ch->eff);
 }
 

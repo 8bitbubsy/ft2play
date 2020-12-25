@@ -35,8 +35,22 @@ static void retrigVolume(stmTyp *ch)
 
 static void retrigEnvelopeVibrato(stmTyp *ch)
 {
-	if (!(ch->waveCtrl & 0x04)) ch->vibPos = 0;
-	if (!(ch->waveCtrl & 0x40)) ch->tremPos = 0;
+	// 8bb: reset vibrato position
+	if (!(ch->waveCtrl & 0x04))
+		ch->vibPos = 0;
+
+	/*
+	** 8bb:
+	** In FT2.00 .. FT2.09, if the sixth bit of "ch->waveCtrl" is set
+	** (from effect E7x where x is $4..$7 or $C..$F) and you trigger a note,
+	** the replayer interrupt will freeze / lock up. This is because of a
+	** label bug in the original code, causing it to jump back to itself
+	** indefinitely.
+	*/
+
+	// 8bb: safely reset tremolo position :-)
+	if (!(ch->waveCtrl & 0x40))
+		ch->tremPos = 0;
 
 	ch->retrigCnt = 0;
 	ch->tremorPos = 0;
@@ -57,7 +71,9 @@ static void retrigEnvelopeVibrato(stmTyp *ch)
 		ch->envPPos = 0;
 	}
 
-	ch->fadeOutSpeed = ins->fadeOut; // 8bb: FT2 doesn't check if fadeout is more than 4095
+	ch->fadeOutSpeed = ins->fadeOut; // 8bb: ranges 0..4095
+
+	// 8bb: final fadeout range is in fact 0..32768, and not 0..65536 like the XM format doc implies
 	ch->fadeOutAmp = 32768;
 
 	if (ins->vibDepth > 0)

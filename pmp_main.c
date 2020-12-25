@@ -1,4 +1,13 @@
-// XM replayer
+/* The actual XM replayer
+**
+** NOTE: Effect handling is slightly different because
+** I've removed the channel muting logic.
+** Muted channels would only process some effects, but
+** since we can't mute channels, we don't care about this.
+**
+** In FT2, the only way to mute a channel is through the
+** tracker itself, so this is not needed in a replayer.
+*/
 
 #include <stdio.h>
 #include <stdint.h>
@@ -74,13 +83,13 @@ static void keyOff(stmTyp *ch)
 
 	instrTyp *ins = ch->instrSeg;
 
-	if (!(ins->envPTyp & 1)) // 8bb: yes, FT2 does this (!)
+	if (!(ins->envPTyp & 1)) // 8bb: pan env. disabled? (probably an FT2 bug)
 	{
 		if (ch->envPCnt >= (uint16_t)ins->envPP[ch->envPPos][0])
 			ch->envPCnt = ins->envPP[ch->envPPos][0]-1;
 	}
 
-	if (ins->envVTyp & 1)
+	if (ins->envVTyp & 1) // 8bb: vol env. enabled?
 	{
 		if (ch->envVCnt >= (uint16_t)ins->envVP[ch->envVPos][0])
 			ch->envVCnt = ins->envVP[ch->envVPos][0]-1;
@@ -102,11 +111,11 @@ uint32_t getFrequenceValue(uint16_t period)
 
 	if (linearFrqTab)
 	{
-		const uint16_t invPeriod = (12 * 192 * 4) - period; // 8bb: this intentionally overflows uint16_t to be accurate to FT2
-		const int32_t octave = (14 - (invPeriod / 768)) & 0x1F;
+		const uint16_t invPeriod = (12 * 192 * 4) - period; // 8bb: this intentionally underflows uint16_t to be accurate to FT2
+		const int32_t octShift = (14 - (invPeriod / 768)) & 0x1F; // 8bb: correct bitshift mask
 
 		delta = (uint32_t)(((int64_t)logTab[invPeriod % 768] * frequenceMulFactor) >> 24);
-		delta >>= octave;
+		delta >>= octShift;
 	}
 	else
 	{
@@ -458,7 +467,7 @@ static void setEnvelopePos(stmTyp *ch, uint8_t param)
 	}
 
 	// *** PANNING ENVELOPE ***
-	if (ins->envVTyp & 2) // 8bb: probably an FT2 bug
+	if (ins->envVTyp & 2) // 8bb: possibly an FT2 bug? (should maybe have been "ins->envPTyp & 1")
 	{
 		ch->envPCnt = param - 1;
 
@@ -537,7 +546,7 @@ static void v_SetVibSpeed(stmTyp *ch, uint8_t *volKol)
 static void v_Volume(stmTyp *ch, uint8_t *volKol)
 {
 	*volKol -= 16;
-	if (*volKol > 64) // 8bb: no idea why FT2 has this check...
+	if (*volKol > 64) // 8bb: no idea why FT2 has this check, this can't happen...
 		*volKol = 64;
 
 	ch->outVol = ch->realVol = *volKol;
@@ -1000,7 +1009,6 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 	{
 		ch->status |= IS_Vol;
 
-		// 8bb: unsigned clamp + reset
 		if (ch->fadeOutAmp >= ch->fadeOutSpeed)
 		{
 			ch->fadeOutAmp -= ch->fadeOutSpeed;
@@ -1366,7 +1374,7 @@ static void portaDown(stmTyp *ch, uint8_t param)
 	ch->status |= IS_Period;
 }
 
-static void tonePorta(stmTyp *ch, uint8_t param)
+static void tonePorta(stmTyp *ch, uint8_t param) // 8bb: param is a placeholder, but not used
 {
 	if (ch->portaDir == 0)
 		return;

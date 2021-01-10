@@ -1287,7 +1287,7 @@ static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 	int32_t tmpPeriod;
 
 	const int32_t fineTune = ((int8_t)ch->fineTune >> 3) + 16;
-	int32_t hiPeriod = 1536; // 8bb: FT2 bug, should've been 1935
+	int32_t hiPeriod = 1536; // 8bb: FT2 bug, should've been 1920 (12*16*10)
 	int32_t loPeriod = 0;
 
 	for (int32_t i = 0; i < 8; i++)

@@ -243,7 +243,7 @@ static void finePortaDown(stmTyp *ch, uint8_t param)
 	ch->fPortaDownSpeed = param;
 
 	ch->realPeriod += param << 2;
-	if ((int16_t)ch->realPeriod > 32000-1)
+	if ((int16_t)ch->realPeriod > 32000-1) // 8bb: FT2 bug, should've been unsigned comparison!
 		ch->realPeriod = 32000-1;
 
 	ch->outPeriod = ch->realPeriod;

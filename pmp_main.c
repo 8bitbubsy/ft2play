@@ -728,7 +728,7 @@ static void xFinePorta(stmTyp *ch, uint8_t param)
 		uint16_t newPeriod = ch->realPeriod;
 
 		newPeriod += param;
-		if ((int16_t)newPeriod > 32000-1)
+		if ((int16_t)newPeriod > 32000-1) // 8bb: FT2 bug, should've been unsigned comparison!
 			newPeriod = 32000-1;
 
 		ch->outPeriod = ch->realPeriod = newPeriod;

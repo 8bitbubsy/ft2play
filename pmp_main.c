@@ -879,7 +879,7 @@ static void fixTonePorta(stmTyp *ch, const tonTyp *p, uint8_t inst)
 		}
 		else
 		{
-			const uint16_t portaTmp = (((p->ton-1) + ch->relTonNr) << 4) + ((int8_t)ch->fineTune >> 3) + 16);
+			const uint16_t portaTmp = (((p->ton-1) + ch->relTonNr) << 4) + (((int8_t)ch->fineTune >> 3) + 16);
 			if (portaTmp < MAX_NOTES)
 			{
 				ch->wantPeriod = note2Period[portaTmp];

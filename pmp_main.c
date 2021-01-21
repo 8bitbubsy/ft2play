@@ -186,7 +186,7 @@ static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 
 	if (ton != 0)
 	{
-		const uint16_t tmpTon = ((ton - 1) << 4) + (((ch->fineTune >> 3) + 16) & 0xFF);
+		const uint16_t tmpTon = ((ton-1) << 4) + (((int8_t)ch->fineTune >> 3) + 16);
 		if (tmpTon < MAX_NOTES)
 			ch->outPeriod = ch->realPeriod = note2Period[tmpTon];
 	}
@@ -879,7 +879,7 @@ static void fixTonePorta(stmTyp *ch, const tonTyp *p, uint8_t inst)
 		}
 		else
 		{
-			const uint16_t portaTmp = ((((p->ton - 1) + ch->relTonNr) & 0xFF) * 16) + (((ch->fineTune >> 3) + 16) & 0xFF);
+			const uint16_t portaTmp = (((p->ton-1) + ch->relTonNr) << 4) + ((int8_t)ch->fineTune >> 3) + 16);
 			if (portaTmp < MAX_NOTES)
 			{
 				ch->wantPeriod = note2Period[portaTmp];

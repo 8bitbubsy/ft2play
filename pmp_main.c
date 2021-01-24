@@ -18,7 +18,7 @@
 #include "tables.h"
 
 #define MAX_FRQ 32000
-#define MAX_NOTES ((12 * 10 * 16) + 16)
+#define MAX_NOTES (10*12*16+16)
 
 static tonTyp nilPatternLine[32]; // 8bb: used for non-allocated (empty) patterns
 
@@ -174,7 +174,7 @@ static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 	ch->relTonNr = s->relTon;
 
 	ton += ch->relTonNr;
-	if (ton >= 12*10)
+	if (ton >= 10*12)
 		return;
 
 	ch->oldVol = s->vol;

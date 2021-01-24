@@ -1,4 +1,4 @@
-/* The actual XM replayer
+/* - XM replayer -
 **
 ** NOTE: Effect handling is slightly different because
 ** I've removed the channel muting logic.
@@ -17,6 +17,7 @@
 #include "snd_masm.h"
 #include "tables.h"
 
+#define MAX_FRQ 32000
 #define MAX_NOTES ((12 * 10 * 16) + 16)
 
 static tonTyp nilPatternLine[32]; // 8bb: used for non-allocated (empty) patterns
@@ -48,7 +49,7 @@ static void retrigEnvelopeVibrato(stmTyp *ch)
 	** indefinitely.
 	*/
 
-	// 8bb: safely reset tremolo position :-)
+	// 8bb: safely reset tremolo position
 	if (!(ch->waveCtrl & 0x40))
 		ch->tremPos = 0;
 
@@ -128,10 +129,10 @@ uint32_t getFrequenceValue(uint16_t period)
 	if (linearFrqTab)
 	{
 		const uint16_t invPeriod = (12 * 192 * 4) - period; // 8bb: this intentionally underflows uint16_t to be accurate to FT2
-		const int32_t octShift = (14 - (invPeriod / 768)) & 0x1F; // 8bb: correct bitshift mask
+		const int32_t octShift = 14 - (invPeriod / 768);
 
 		delta = (uint32_t)(((int64_t)logTab[invPeriod % 768] * frequenceMulFactor) >> 24);
-		delta >>= octShift;
+		delta >>= (octShift & 31); // 8bb: added needed 32-bit bitshift mask
 	}
 	else
 	{
@@ -166,7 +167,7 @@ static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 	ch->instrSeg = ins;
 	ch->mute = ins->mute;
 
-	uint8_t smp = ins->ta[ton-1] & 0xF; // 8bb: added safety-AND
+	uint8_t smp = ins->ta[ton-1] & 0xF; // 8bb: added for safety
 	ch->sampleNr = smp;
 
 	sampleTyp *s = &ins->samp[smp];
@@ -208,7 +209,7 @@ static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 	P_StartTone(s, ch->smpStartPos);
 }
 
-static void volume(stmTyp *ch, uint8_t param); // 8bb: actually volume slide
+static void volume(stmTyp *ch, uint8_t param); // 8bb: volume slide
 static void vibrato2(stmTyp *ch);
 static void tonePorta(stmTyp *ch, uint8_t param);
 
@@ -243,8 +244,8 @@ static void finePortaDown(stmTyp *ch, uint8_t param)
 	ch->fPortaDownSpeed = param;
 
 	ch->realPeriod += param << 2;
-	if ((int16_t)ch->realPeriod > 32000-1) // 8bb: FT2 bug, should've been unsigned comparison!
-		ch->realPeriod = 32000-1;
+	if ((int16_t)ch->realPeriod > MAX_FRQ-1) // 8bb: FT2 bug, should've been unsigned comparison!
+		ch->realPeriod = MAX_FRQ-1;
 
 	ch->outPeriod = ch->realPeriod;
 	ch->status |= IS_Period;
@@ -728,8 +729,8 @@ static void xFinePorta(stmTyp *ch, uint8_t param)
 		uint16_t newPeriod = ch->realPeriod;
 
 		newPeriod += param;
-		if ((int16_t)newPeriod > 32000-1) // 8bb: FT2 bug, should've been unsigned comparison!
-			newPeriod = 32000-1;
+		if ((int16_t)newPeriod > MAX_FRQ-1) // 8bb: FT2 bug, should've been unsigned comparison!
+			newPeriod = MAX_FRQ-1;
 
 		ch->outPeriod = ch->realPeriod = newPeriod;
 		ch->status |= IS_Period;
@@ -919,7 +920,6 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 		// 8bb: if we have a vibrato on previous row (ch) that ends at current row (p), set period back
 		if ((ch->effTyp == 4 || ch->effTyp == 6) && (p->effTyp != 4 && p->effTyp != 6))
 		{
-			// 8bb: but it's ending at the next (this) row, so set period back
 			ch->outPeriod = ch->realPeriod;
 			ch->status |= IS_Period;
 		}
@@ -1269,7 +1269,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 		uint16_t tmpPeriod = (autoVibVal * (int16_t)autoVibAmp) >> 16;
 
 		tmpPeriod += ch->outPeriod;
-		if (tmpPeriod >= 32000)
+		if (tmpPeriod >= MAX_FRQ)
 			tmpPeriod = 0; // 8bb: yes, FT2 does this (!)
 
 		ch->finalPeriod = tmpPeriod;
@@ -1287,7 +1287,12 @@ static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 	int32_t tmpPeriod;
 
 	const int32_t fineTune = ((int8_t)ch->fineTune >> 3) + 16;
-	int32_t hiPeriod = 1536; // 8bb: FT2 bug, should've been 1920 (12*16*10)
+	
+	/* 8bb: FT2 bug, should've been 10*12*16. Notes above B-7 (95) will have issues.
+	** You can only achieve such high notes by having a high relative note setting.
+	*/
+	int32_t hiPeriod = 8*12*16; 
+	
 	int32_t loPeriod = 0;
 
 	for (int32_t i = 0; i < 8; i++)
@@ -1296,7 +1301,7 @@ static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 
 		int32_t lookUp = tmpPeriod - 8;
 		if (lookUp < 0)
-			lookUp = 0; // 8bb: safety fix (C-0 w/ finetune <= -65)
+			lookUp = 0; // 8bb: safety fix (C-0 w/ finetune <= -65). This buggy read seems to return 0 in FT2 (TODO: Verify...)
 
 		if (period >= note2Period[lookUp])
 			hiPeriod = (tmpPeriod - fineTune) & ~15;
@@ -1305,8 +1310,8 @@ static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 	}
 
 	tmpPeriod = loPeriod + fineTune + (arpNote << 4);
-	if (tmpPeriod >= 1550) // 8bb: FT2 bugs. Off-by-one edge case, and should've been 1935 (1936)
-		tmpPeriod = 1551;
+	if (tmpPeriod >= (8*12*16+15)-1) // 8bb: FT2 bug, should've been 10*12*16+16 (also notice the +2 difference)
+		tmpPeriod = (8*12*16+16)-1;
 
 	return note2Period[tmpPeriod];
 }
@@ -1346,7 +1351,12 @@ static void vibrato2(stmTyp *ch)
 
 static void arp(stmTyp *ch, uint8_t param)
 {
-	const uint8_t tick = arpTab[song.timer & 0xFF]; // 8bb: non-FT2 protection (we have 248 extra overflow bytes in LUT, but not more!)
+	/* 8bb: The original arpTab table only supports 16 ticks, so it can and will overflow.
+	** I have added overflown values to the table so that we can handle up to 256 ticks.
+	** The added overflow entries are accurate to the overflow-read in FT2.08/FT2.09.
+	*/
+	const uint8_t tick = arpTab[song.timer & 0xFF];
+	
 	if (tick == 0)
 	{
 		ch->outPeriod = ch->realPeriod;
@@ -1383,14 +1393,14 @@ static void portaDown(stmTyp *ch, uint8_t param)
 	ch->portaDownSpeed = param;
 
 	ch->realPeriod += param << 2;
-	if ((int16_t)ch->realPeriod > 32000-1) // 8bb: FT2 bug, should've been unsigned comparison!
-		ch->realPeriod = 32000-1;
+	if ((int16_t)ch->realPeriod > MAX_FRQ-1) // 8bb: FT2 bug, should've been unsigned comparison!
+		ch->realPeriod = MAX_FRQ-1;
 
 	ch->outPeriod = ch->realPeriod;
 	ch->status |= IS_Period;
 }
 
-static void tonePorta(stmTyp *ch, uint8_t param) // 8bb: param is a placeholder, but not used
+static void tonePorta(stmTyp *ch, uint8_t param) // 8bb: param is a placeholder (not used)
 {
 	if (ch->portaDir == 0)
 		return;
@@ -1444,7 +1454,7 @@ static void vibrato(stmTyp *ch, uint8_t param)
 
 static void tonePlusVol(stmTyp *ch, uint8_t param)
 {
-	tonePorta(ch, 0); // 8bb: the last parameter is actually not used in tonePorta()
+	tonePorta(ch, 0); // 8bb: the last parameter is not used in tonePorta()
 	volume(ch, param);
 
 	(void)param;
@@ -1513,7 +1523,7 @@ static void tremolo(stmTyp *ch, uint8_t param)
 	ch->tremPos += ch->tremSpeed;
 }
 
-static void volume(stmTyp *ch, uint8_t param) // 8bb: actually volume slide
+static void volume(stmTyp *ch, uint8_t param) // 8bb: volume slide
 {
 	if (param == 0)
 		param = ch->volSlideSpeed;

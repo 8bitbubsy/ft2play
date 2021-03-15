@@ -429,7 +429,7 @@ static void unpackPatt(uint8_t *dst, uint16_t inn, uint16_t len, uint8_t antChn)
 				*dst++ = *src++;
 			}
 
-			// 8bb: added this. If note is overflowing (>97), remove it (prevent LUT buffer overrun)
+			// 8bb: added this. If note >97, remove it (prevents out-of-range read in note->sample LUT)
 			if (*(dst-5) > 97)
 				*(dst-5) = 0;
 

@@ -80,10 +80,21 @@ typedef struct stmTyp_t
 	instrTyp *instrSeg;
 } stmTyp;
 
-typedef struct tonTyp_t
+#ifdef _MSC_VER
+#pragma pack(push)
+#pragma pack(1)
+#endif
+typedef struct tonTyp_t // this one must be packed on some systems
 {
 	uint8_t ton, instr, vol, effTyp, eff;
-} tonTyp;
+}
+#ifdef __GNUC__
+__attribute__ ((packed))
+#endif
+tonTyp;
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 // globalized
 extern volatile bool interpolationFlag, volumeRampingFlag, moduleLoaded, musicPaused, WAVDump_Flag;

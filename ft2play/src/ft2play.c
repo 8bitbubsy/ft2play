@@ -66,7 +66,7 @@ static void sigtermFunc(int32_t signum)
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2)
+	if (argc < 2 || (argc == 2 && (!strcmp(argv[1], "/?") || !strcmp(argv[1], "-h"))))
 	{
 		showUsage();
 		return 1;

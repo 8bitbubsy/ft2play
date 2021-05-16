@@ -21,11 +21,21 @@ enum // voice flags
 	IS_QuickVol = 16
 };
 
+enum // note
+{
+	NOTE_OFF = 97
+};
+
+enum // header flags
+{
+	LINEAR_FREQUENCIES = 1
+};
+
 enum // sample flags
 {
 	LOOP_OFF = 0,
-	LOOP_FWD = 1,
-	LOOP_BIDI = 2,
+	LOOP_FORWARD = 1,
+	LOOP_PINGPONG = 2,
 	SAMPLE_16BIT = 16
 };
 

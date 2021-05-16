@@ -224,4 +224,4 @@ typedef void (*mixRoutine)(void *, int32_t, int32_t);
 
 extern mixRoutine mixRoutineTable[16];
 
-void PMPMix32Proc(CIType *v, int32_t numSamples, int32_t bufferPos); // 8bb: numSamples = 1..65535
+void PMPMix32Proc(CIType *v, int32_t numSamples, int32_t bufferPos);

@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -50,7 +49,7 @@ void P_StartTone(sampleTyp *s, int32_t smpStartPos)
 // 8bb: added these two
 bool mix_Init(int32_t audioBufferSize)
 {
-	CDA_MixBuffer = (int32_t *)malloc(audioBufferSize * (2 * sizeof (int32_t)));
+	CDA_MixBuffer = (int32_t *)calloc(audioBufferSize * 2, sizeof (int32_t));
 	if (CDA_MixBuffer == NULL)
 		return false;
 
@@ -255,14 +254,11 @@ void mix_UpdateBuffer(int16_t *buffer, int32_t numSamples)
 	if (numSamples <= 0)
 		return;
 
-	if (musicPaused || WAVDump_Flag)
+	if (musicPaused || WAVDump_Flag) // silence output
 	{
 		memset(buffer, 0, numSamples * (2 * sizeof (int16_t)));
 		return;
 	}
-
-	assert(CDA_MixBuffer != NULL);
-	memset(CDA_MixBuffer, 0, numSamples * (2 * sizeof (int32_t)));
 
 	int32_t c = 0;
 	int32_t a = numSamples;
@@ -280,10 +276,6 @@ void mix_UpdateBuffer(int16_t *buffer, int32_t numSamples)
 		int32_t b = a;
 		if (b > PMPLeft)
 			b = PMPLeft;
-
-		// 8bb: fix for PMPMix32Proc() silent mix (vol=0)
-		if (b > 65535)
-			b = 65535;
 
 		CIType *v = CI;
 		for (int32_t i = 0; i < song.antChn*2; i++, v++)
@@ -308,6 +300,8 @@ void mix_UpdateBuffer(int16_t *buffer, int32_t numSamples)
 			int32_t out32 = CDA_MixBuffer[i] >> 8;
 			CLAMP16(out32);
 			buffer[i] = (int16_t)out32;
+
+			CDA_MixBuffer[i] = 0; // 8bb: clear what we read
 		}
 	}
 	else
@@ -318,6 +312,8 @@ void mix_UpdateBuffer(int16_t *buffer, int32_t numSamples)
 			CLAMP16(out32);
 			out32 = (out32 * masterVol) >> 8;
 			buffer[i] = (int16_t)out32;
+
+			CDA_MixBuffer[i] = 0; // 8bb: clear what we read
 		}
 	}
 }
@@ -369,8 +365,6 @@ int32_t dump_GetFrame(int16_t *p) // 8bb: returns bytes mixed
 	mainPlayer();
 	mix_UpdateChannelVolPanFrq();
 
-	memset(CDA_MixBuffer, 0, speedVal * (2 * sizeof (int32_t)));
-
 	CIType *v = CI;
 	for (int32_t i = 0; i < song.antChn*2; i++, v++)
 		PMPMix32Proc(v, speedVal, 0);
@@ -381,6 +375,8 @@ int32_t dump_GetFrame(int16_t *p) // 8bb: returns bytes mixed
 		int32_t out32 = CDA_MixBuffer[i] >> 8;
 		CLAMP16(out32);
 		p[i] = (int16_t)out32;
+
+		CDA_MixBuffer[i] = 0; // 8bb: clear what we read
 	}
 
 	return speedVal * (2 * sizeof (int16_t));

@@ -119,7 +119,7 @@ static void keyOff(stmTyp *ch)
 	ch->envSustainActive = false;
 }
 
-uint32_t getFrequenceValue(uint16_t period)
+uint32_t getFrequenceValue(uint16_t period) // 8bb: converts period to 16.16fp resampling delta
 {
 	uint32_t delta;
 
@@ -148,7 +148,7 @@ uint32_t getFrequenceValue(uint16_t period)
 
 static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 {
-	if (ton == 97)
+	if (ton == NOTE_OFF)
 	{
 		keyOff(ch);
 		return;
@@ -184,7 +184,7 @@ static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 	ch->oldVol = s->vol;
 	ch->oldPan = s->pan;
 
-	if (effTyp == 0x0E && (eff & 0xF0) == 0x50)
+	if (effTyp == 0x0E && (eff & 0xF0) == 0x50) // 8bb: EFx - Set Finetune
 		ch->fineTune = ((eff & 0x0F) << 4) - 128;
 	else
 		ch->fineTune = s->fine;
@@ -198,7 +198,7 @@ static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 
 	ch->status |= IS_Period + IS_Vol + IS_Pan + IS_NyTon + IS_QuickVol;
 
-	if (effTyp == 9)
+	if (effTyp == 9) // 8bb: 9xx - Set Sample Offset
 	{
 		if (eff)
 			ch->smpOffset = ch->eff;
@@ -777,12 +777,12 @@ static void doMultiRetrig(stmTyp *ch, uint8_t param) // 8bb: "param" is never us
 	ch->realVol = (uint8_t)vol;
 	ch->outVol = ch->realVol;
 
-	if (ch->volKolVol >= 0x10 && ch->volKolVol <= 0x50)
+	if (ch->volKolVol >= 0x10 && ch->volKolVol <= 0x50) // 8bb: Set Volume (volume column)
 	{
 		ch->outVol = ch->volKolVol - 0x10;
 		ch->realVol = ch->outVol;
 	}
-	else if (ch->volKolVol >= 0xC0 && ch->volKolVol <= 0xCF)
+	else if (ch->volKolVol >= 0xC0 && ch->volKolVol <= 0xCF) // 8bb: Set Panning (volume column)
 	{
 		ch->outPan = (ch->volKolVol & 0x0F) << 4;
 	}
@@ -865,7 +865,7 @@ static void checkEffects(stmTyp *ch) // tick0 effect handling
 		return;
 
 	// 8bb: this one has to be done here instead of in the jumptable, as it needs the "newVolKol" parameter (FT2 quirk)
-	if (ch->effTyp == 27)
+	if (ch->effTyp == 27) // 8bb: Rxy - Multi Retrig
 	{
 		multiRetrig(ch, param, newVolKol);
 		return;
@@ -878,7 +878,7 @@ static void fixTonePorta(stmTyp *ch, const tonTyp *p, uint8_t inst)
 {
 	if (p->ton > 0)
 	{
-		if (p->ton == 97)
+		if (p->ton == NOTE_OFF)
 		{
 			keyOff(ch);
 		}
@@ -902,7 +902,8 @@ static void fixTonePorta(stmTyp *ch, const tonTyp *p, uint8_t inst)
 	if (inst > 0)
 	{
 		retrigVolume(ch);
-		if (p->ton != 97)
+
+		if (p->ton != NOTE_OFF)
 			retrigEnvelopeVibrato(ch);
 	}
 }
@@ -913,7 +914,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 
 	if (ch->effTyp == 0)
 	{
-		if (ch->eff > 0) // 8bb: we have an arpeggio running, set period back
+		if (ch->eff != 0) // 8bb: we have an arpeggio (0xy) running, set period back
 		{
 			ch->outPeriod = ch->realPeriod;
 			ch->status |= IS_Period;
@@ -921,7 +922,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 	}
 	else
 	{
-		// 8bb: if we have a vibrato on previous row (ch) that ends at current row (p), set period back
+		// 8bb: if we have a vibrato (4xy/6xy) on previous row (ch) that ends at current row (p), set period back
 		if ((ch->effTyp == 4 || ch->effTyp == 6) && (p->effTyp != 4 && p->effTyp != 6))
 		{
 			ch->outPeriod = ch->realPeriod;
@@ -944,17 +945,17 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 	}
 
 	bool checkEfx = true;
-	if (p->effTyp == 0x0E)
+	if (p->effTyp == 0x0E) // 8bb: check for EDx (Note Delay) and E90 (Retrigger Note)
 	{
-		if (p->eff >= 0xD1 && p->eff <= 0xDF)
-			return; // 8bb: we have a note delay (ED1..EDF)
-		else if (p->eff == 0x90)
+		if (p->eff >= 0xD1 && p->eff <= 0xDF) // 8bb: ED1..EDF (Note Delay)
+			return;
+		else if (p->eff == 0x90) // 8bb: E90 (Retrigger Note)
 			checkEfx = false;
 	}
 
 	if (checkEfx)
 	{
-		if ((ch->volKolVol & 0xF0) == 0xF0) // gxx
+		if ((ch->volKolVol & 0xF0) == 0xF0) // 8bb: Portamento (volume column)
 		{
 			const uint8_t volKolParam = ch->volKolVol & 0x0F;
 			if (volKolParam > 0)
@@ -965,7 +966,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 			return;
 		}
 
-		if (p->effTyp == 3 || p->effTyp == 5) // 3xx or 5xx
+		if (p->effTyp == 3 || p->effTyp == 5) // 8bb: Portamento (3xx/5xx)
 		{
 			if (p->effTyp != 5 && p->eff != 0)
 				ch->portaSpeed = p->eff << 2;
@@ -975,7 +976,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 			return;
 		}
 
-		if (p->effTyp == 0x14 && p->eff == 0) // K00 (KeyOff - only handle tick 0 here)
+		if (p->effTyp == 0x14 && p->eff == 0) // 8bb: K00 (Key Off - only handle tick 0 here)
 		{
 			keyOff(ch);
 
@@ -999,7 +1000,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 		}
 	}
 
-	if (p->ton == 97)
+	if (p->ton == NOTE_OFF)
 		keyOff(ch);
 	else
 		startTone(p->ton, p->effTyp, p->eff, ch);
@@ -1007,7 +1008,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 	if (inst > 0)
 	{
 		retrigVolume(ch);
-		if (p->ton != 97)
+		if (p->ton != NOTE_OFF)
 			retrigEnvelopeVibrato(ch);
 	}
 
@@ -1285,7 +1286,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 	}
 }
 
-// 8bb: for arpeggio and portamento (semitone-slide mode)
+// 8bb: converts period to note number, for arpeggio and portamento (in semitone-slide mode)
 static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 {
 	int32_t tmpPeriod;
@@ -1295,7 +1296,7 @@ static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 	/* 8bb: FT2 bug, should've been 10*12*16. Notes above B-7 (95) will have issues.
 	** You can only achieve such high notes by having a high relative note setting.
 	*/
-	int32_t hiPeriod = 8*12*16; 
+	int32_t hiPeriod = 8*12*16;
 	
 	int32_t loPeriod = 0;
 
@@ -1674,17 +1675,17 @@ static void noteDelay(stmTyp *ch, uint8_t param)
 	{
 		startTone(ch->tonTyp & 0xFF, 0, 0, ch);
 
-		if ((ch->tonTyp & 0xFF00) > 0)
+		if ((ch->tonTyp & 0xFF00) > 0) // 8bb: do we have an instrument number?
 			retrigVolume(ch);
 
 		retrigEnvelopeVibrato(ch);
 
-		if (ch->volKolVol >= 0x10 && ch->volKolVol <= 0x50)
+		if (ch->volKolVol >= 0x10 && ch->volKolVol <= 0x50) // 8bb: Set Volume (volume column)
 		{
 			ch->outVol = ch->volKolVol - 16;
 			ch->realVol = ch->outVol;
 		}
-		else if (ch->volKolVol >= 0xC0 && ch->volKolVol <= 0xCF)
+		else if (ch->volKolVol >= 0xC0 && ch->volKolVol <= 0xCF) // 8bb: Set Panning (volume column)
 		{
 			ch->outPan = (ch->volKolVol & 0x0F) << 4;
 		}

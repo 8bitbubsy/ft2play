@@ -9,11 +9,8 @@
 ** Mixer macros are stored in snd_masm.h
 */
 
-void PMPMix32Proc(CIType *v, int32_t numSamples, int32_t bufferPos) // 8bb: numSamples = 1..65535
+void PMPMix32Proc(CIType *v, int32_t numSamples, int32_t bufferPos)
 {
-	if (numSamples > 65535)
-		return;
-
 	if (v->SType & SType_Off)
 		return; // voice is not active
 
@@ -21,13 +18,16 @@ void PMPMix32Proc(CIType *v, int32_t numSamples, int32_t bufferPos) // 8bb: numS
 	if (volumeRampingFlag)
 		volStatus |= v->SLVol2 | v->SRVol2;
 
-	if (volStatus == 0) // mix silence
+	if (volStatus == 0) // silence mix
 	{
-		const uint32_t addPos = (v->SFrq >> 16) * (uint32_t)numSamples;
-		uint32_t addFrac = (v->SFrq & 0xFFFF) * (uint32_t)numSamples;
+		const uint64_t samplesToMix = (uint64_t)v->SFrq * (uint32_t)numSamples; // 16.16fp
 
-		addFrac += v->SPosDec >> 16;
-		int32_t realPos = v->SPos + addPos + (addFrac >> 16);
+		const int32_t samples = (int32_t)(samplesToMix >> 16);
+		const int32_t samplesFrac = (samplesToMix & 0xFFFF) + (v->SPosDec >> 16);
+
+		int32_t realPos = v->SPos + samples + (samplesFrac >> 16);
+		int32_t posFrac = samplesFrac & 0xFFFF;
+
 		if (realPos >= v->SLen)
 		{
 			uint8_t SType = v->SType;
@@ -48,7 +48,7 @@ void PMPMix32Proc(CIType *v, int32_t numSamples, int32_t bufferPos) // 8bb: numS
 			}
 		}
 
-		v->SPosDec = (addFrac & 0xFFFF) << 16;
+		v->SPosDec = posFrac << 16;
 		v->SPos = realPos;
 	}
 	else // normal mixing

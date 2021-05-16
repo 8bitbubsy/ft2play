@@ -203,7 +203,7 @@ static void fixSample(sampleTyp *s)
 
 	/* 8bb:
 	** This is the exact bit test order of which FT2 handles
-	** the sample fix in SND_MASM.ASM.
+	** the sample tap fix.
 	**
 	** This order is important for rare cases where both the
 	** "forward" and "pingpong" loop bits are set at once.
@@ -215,9 +215,8 @@ static void fixSample(sampleTyp *s)
 	** loop end point.
 	*/
 
-	if (loopType & 1)
+	if (loopType & LOOP_FORWARD)
 	{
-		// forward loop
 		if (sample16Bit)
 			ptr16[loopEnd] = ptr16[loopStart];
 		else
@@ -225,17 +224,15 @@ static void fixSample(sampleTyp *s)
 
 		return;
 	}
-	else if (loopType & 2)
+	else if (loopType & LOOP_PINGPONG)
 	{
-		// pingpong loop
 		if (sample16Bit)
 			ptr16[loopEnd] = ptr16[loopEnd-1];
 		else
 			s->pek[loopEnd] = s->pek[loopEnd-1];
 	}
-	else
+	else // no loop
 	{
-		// no loop
 		if (sample16Bit)
 			ptr16[len] = 0;
 		else
@@ -945,7 +942,8 @@ bool loadMusicFromData(const uint8_t *data, uint32_t dataLength) // .XM/.MOD/.FT
 	song.len = h.len;
 	song.repS = h.repS;
 	song.antChn = (uint8_t)h.antChn;
-	setFrqTab(h.flags & 1);
+	bool linearFrequencies = !!(h.flags & LINEAR_FREQUENCIES);
+	setFrqTab(linearFrequencies);
 	memcpy(song.songTab, h.songTab, 256);
 
 	song.antInstrs = h.antInstrs; // 8bb: added this

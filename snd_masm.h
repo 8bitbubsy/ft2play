@@ -140,8 +140,8 @@
 #define LIMIT_MIX_NUM \
 	int32_t samplesToMix; \
 	int32_t SFrq = v->SFrq; \
-	int32_t i = (v->SLen - 1) - realPos; \
-	if (i > 65535) i = 65535; /* 8bb: added this to prevent 64-bit div (still bit-accurate mixing results) */ \
+	int32_t i = (v->SLen-1) - realPos; \
+	if (i > UINT16_MAX) i = UINT16_MAX; /* 8bb: added this to prevent 64-bit div (still bit-accurate mixing results) */ \
 	if (SFrq != 0) \
 	{ \
 		const uint32_t tmp32 = (i << 16) | ((0xFFFF0000 - pos) >> 16); \
@@ -185,7 +185,7 @@
 	\
 	pos += CDA_MixBuffPos; \
 	const int32_t CDA_IPValH = (int32_t)SFrq >> 16; \
-	const uint32_t CDA_IPValL = ((uint32_t)(SFrq & 0xFFFF) << 16) + 8; /* 8 = mixer buffer increase (for LERP to be bit-accurate) */ \
+	const uint32_t CDA_IPValL = ((uint32_t)(SFrq & 0xFFFF) << 16) + 8; /* 8 = mixer buffer increase (for LERP to be bit-accurate to FT2) */ \
 
 #define HANDLE_POS_END \
 	if (backwards) \

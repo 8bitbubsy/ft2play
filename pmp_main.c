@@ -1,12 +1,12 @@
-/* - XM replayer -
+/* - main XM replayer -
 **
 ** NOTE: Effect handling is slightly different because
 ** I've removed the channel muting logic.
-** Muted channels would only process some effects, but
+** Muted channels would only process *some* effects, but
 ** since we can't mute channels, we don't care about this.
 **
 ** In FT2, the only way to mute a channel is through the
-** tracker itself, so this is not needed in a replayer.
+** tracker itself, so this is not really needed in a replayer.
 */
 
 #include <stdio.h>
@@ -60,21 +60,21 @@ static void retrigEnvelopeVibrato(stmTyp *ch)
 
 	instrTyp *ins = ch->instrSeg;
 
-	if (ins->envVTyp & 1)
+	if (ins->envVTyp & ENV_ENABLED)
 	{
 		ch->envVCnt = 65535;
 		ch->envVPos = 0;
 	}
 
-	if (ins->envPTyp & 1)
+	if (ins->envPTyp & ENV_ENABLED)
 	{
 		ch->envPCnt = 65535;
 		ch->envPPos = 0;
 	}
 
-	ch->fadeOutSpeed = ins->fadeOut; // 8bb: ranges 0..4095
+	ch->fadeOutSpeed = ins->fadeOut; // 8bb: ranges 0..4095 (FT2 doesn't check if it's higher than 4095!)
 
-	// 8bb: final fadeout range is in fact 0..32768, and not 0..65536 like the XM format doc implies
+	// 8bb: final fadeout range is in fact 0..32768, and not 0..65536 like the XM format doc says
 	ch->fadeOutAmp = 32768;
 
 	if (ins->vibDepth > 0)
@@ -96,17 +96,15 @@ static void retrigEnvelopeVibrato(stmTyp *ch)
 
 static void keyOff(stmTyp *ch)
 {
-	ch->envSustainActive = false;
-
 	instrTyp *ins = ch->instrSeg;
 
-	if (!(ins->envPTyp & 1)) // 8bb: pan env. disabled? (probably an FT2 bug)
+	if (!(ins->envPTyp & ENV_ENABLED)) // 8bb: probably an FT2 bug
 	{
 		if (ch->envPCnt >= (uint16_t)ins->envPP[ch->envPPos][0])
 			ch->envPCnt = ins->envPP[ch->envPPos][0]-1;
 	}
 
-	if (ins->envVTyp & 1) // 8bb: vol env. enabled?
+	if (ins->envVTyp & ENV_ENABLED)
 	{
 		if (ch->envVCnt >= (uint16_t)ins->envVP[ch->envVPos][0])
 			ch->envVCnt = ins->envVP[ch->envVPos][0]-1;
@@ -117,6 +115,8 @@ static void keyOff(stmTyp *ch)
 		ch->outVol = 0;
 		ch->status |= IS_Vol + IS_QuickVol;
 	}
+
+	ch->envSustainActive = false;
 }
 
 uint32_t getFrequenceValue(uint16_t period)
@@ -129,14 +129,18 @@ uint32_t getFrequenceValue(uint16_t period)
 	if (linearFrqTab)
 	{
 		const uint16_t invPeriod = (12 * 192 * 4) - period; // 8bb: this intentionally underflows uint16_t to be accurate to FT2
-		const int32_t octShift = 14 - (invPeriod / 768);
 
-		delta = (uint32_t)(((int64_t)logTab[invPeriod % 768] * frequenceMulFactor) >> 24);
+		const uint32_t quotient = invPeriod / 768;
+		const uint32_t remainder = invPeriod % 768;
+
+		const int32_t octShift = 14 - quotient;
+
+		delta = (uint32_t)(((int64_t)logTab[remainder] * (int32_t)frequenceMulFactor) >> 24);
 		delta >>= (octShift & 31); // 8bb: added needed 32-bit bitshift mask
 	}
 	else
 	{
-		delta = frequenceDivFactor / period;
+		delta = frequenceDivFactor / (uint32_t)period;
 	}
 
 	return delta;
@@ -187,7 +191,7 @@ static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 
 	if (ton != 0)
 	{
-		const uint16_t tmpTon = ((ton-1) << 4) + (((int8_t)ch->fineTune >> 3) + 16);
+		const uint16_t tmpTon = ((ton-1) << 4) + (((int8_t)ch->fineTune >> 3) + 16); // 8bb: 0..1935
 		if (tmpTon < MAX_NOTES) // 8bb: tmpTon is *always* below MAX_NOTES here, this check is not needed
 			ch->outPeriod = ch->realPeriod = note2Period[tmpTon];
 	}
@@ -419,7 +423,7 @@ static void setEnvelopePos(stmTyp *ch, uint8_t param)
 	instrTyp *ins = ch->instrSeg;
 
 	// *** VOLUME ENVELOPE ***
-	if (ins->envVTyp & 1)
+	if (ins->envVTyp & ENV_ENABLED)
 	{
 		ch->envVCnt = param - 1;
 
@@ -484,7 +488,7 @@ static void setEnvelopePos(stmTyp *ch, uint8_t param)
 	}
 
 	// *** PANNING ENVELOPE ***
-	if (ins->envVTyp & 2) // 8bb: possibly an FT2 bug? (should maybe have been "ins->envPTyp & 1")
+	if (ins->envVTyp & ENV_SUSTAIN) // 8bb: FT2 bug? (should probably have been "ins->envPTyp & ENV_ENABLED")
 	{
 		ch->envPCnt = param - 1;
 
@@ -1040,7 +1044,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 	{
 		// *** VOLUME ENVELOPE ***
 		envVal = 0;
-		if (ins->envVTyp & 1)
+		if (ins->envVTyp & ENV_ENABLED)
 		{
 			envDidInterpolate = false;
 			envPos = ch->envVPos;
@@ -1050,13 +1054,13 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 				ch->envVAmp = ins->envVP[envPos][1] << 8;
 
 				envPos++;
-				if (ins->envVTyp & 4)
+				if (ins->envVTyp & ENV_LOOP)
 				{
 					envPos--;
 
 					if (envPos == ins->envVRepE)
 					{
-						if (!(ins->envVTyp & 2) || envPos != ins->envVSust || ch->envSustainActive)
+						if (!(ins->envVTyp & ENV_SUSTAIN) || envPos != ins->envVSust || ch->envSustainActive)
 						{
 							envPos = ins->envVRepS;
 
@@ -1071,7 +1075,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 				if (envPos < ins->envVPAnt)
 				{
 					envInterpolateFlag = true;
-					if ((ins->envVTyp & 2) && ch->envSustainActive)
+					if ((ins->envVTyp & ENV_SUSTAIN) && ch->envSustainActive)
 					{
 						if (envPos-1 == ins->envVSust)
 						{
@@ -1141,7 +1145,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 	// *** PANNING ENVELOPE ***
 
 	envVal = 0;
-	if (ins->envPTyp & 1)
+	if (ins->envPTyp & ENV_ENABLED)
 	{
 		envDidInterpolate = false;
 		envPos = ch->envPPos;
@@ -1151,13 +1155,13 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 			ch->envPAmp = ins->envPP[envPos][1] << 8;
 
 			envPos++;
-			if (ins->envPTyp & 4)
+			if (ins->envPTyp & ENV_LOOP)
 			{
 				envPos--;
 
 				if (envPos == ins->envPRepE)
 				{
-					if (!(ins->envPTyp & 2) || envPos != ins->envPSust || ch->envSustainActive)
+					if (!(ins->envPTyp & ENV_SUSTAIN) || envPos != ins->envPSust || ch->envSustainActive)
 					{
 						envPos = ins->envPRepS;
 
@@ -1172,7 +1176,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 			if (envPos < ins->envPPAnt)
 			{
 				envInterpolateFlag = true;
-				if ((ins->envPTyp & 2) && ch->envSustainActive)
+				if ((ins->envPTyp & ENV_SUSTAIN) && ch->envSustainActive)
 				{
 					if (envPos-1 == ins->envPSust)
 					{

@@ -1,56 +1,56 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="pmplay">
+    <Filter Include="replayer">
       <UniqueIdentifier>{2cfd8b0c-481e-4730-981b-6b8213c6bfd4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="pmplay\audiodrivers">
+    <Filter Include="replayer\audiodrivers">
       <UniqueIdentifier>{8b2b35ad-3eac-48ea-b6ce-20cc06e98a9c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="pmplay\audiodrivers\winmm">
+    <Filter Include="replayer\audiodrivers\winmm">
       <UniqueIdentifier>{431a929b-85e5-4c94-9647-b6217c5ed9d4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\pmp_main.c">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClCompile>
     <ClCompile Include="..\..\pmp_mix.c">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClCompile>
     <ClCompile Include="..\..\pmplay.c">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClCompile>
     <ClCompile Include="..\..\snd_masm.c">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClCompile>
     <ClCompile Include="..\..\tables.c">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClCompile>
     <ClCompile Include="..\src\ft2play.c" />
     <ClCompile Include="..\..\audiodrivers\winmm\winmm.c">
-      <Filter>pmplay\audiodrivers\winmm</Filter>
+      <Filter>replayer\audiodrivers\winmm</Filter>
     </ClCompile>
     <ClCompile Include="..\src\posix.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\pmp_main.h">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClInclude>
     <ClInclude Include="..\..\pmp_mix.h">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClInclude>
     <ClInclude Include="..\..\pmplay.h">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClInclude>
     <ClInclude Include="..\..\snd_masm.h">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClInclude>
     <ClInclude Include="..\..\tables.h">
-      <Filter>pmplay</Filter>
+      <Filter>replayer</Filter>
     </ClInclude>
     <ClInclude Include="..\..\audiodrivers\winmm\winmm.h">
-      <Filter>pmplay\audiodrivers\winmm</Filter>
+      <Filter>replayer\audiodrivers\winmm</Filter>
     </ClInclude>
     <ClInclude Include="..\src\posix.h" />
   </ItemGroup>

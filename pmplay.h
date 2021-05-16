@@ -12,13 +12,28 @@
 // Read "audiodrivers/how_to_write_drivers.txt"
 #endif
 
-enum
+enum // voice flags
 {
 	IS_Vol = 1,
 	IS_Period = 2,
 	IS_NyTon = 4,
 	IS_Pan = 8,
 	IS_QuickVol = 16
+};
+
+enum // sample flags
+{
+	LOOP_OFF = 0,
+	LOOP_FWD = 1,
+	LOOP_BIDI = 2,
+	SAMPLE_16BIT = 16
+};
+
+enum // envelope flags
+{
+	ENV_ENABLED = 1,
+	ENV_SUSTAIN = 2,
+	ENV_LOOP    = 4
 };
 
 typedef struct songTyp_t
@@ -104,7 +119,7 @@ extern uint16_t pattLens[256];
 extern int16_t PMPTmpActiveChannel, boostLevel;
 extern int32_t masterVol, PMPLeft;
 extern int32_t realReplayRate, quickVolSizeVal, speedVal;
-extern int32_t frequenceDivFactor, frequenceMulFactor;
+extern uint32_t frequenceDivFactor, frequenceMulFactor;
 extern uint32_t CDA_Amp;
 extern tonTyp *patt[256];
 extern instrTyp *instr[1+128];

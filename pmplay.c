@@ -1,14 +1,6 @@
 /*
-** C-port of FT2.09's XM replayer, by 8bitbubsy nov. 2020
-**
-** Note: This is not the exact same code used in the FT2 clone!
-** This is a direct port meant to give bit-accurate results to
-** FT2.08/FT2.09 (non-GUS mode). It's very handy to use as a
-** reference if you are trying to make your own, accurate XM
-** player.
+** - loaders and replayer handlers -
 */
-
-#define INSTR_HEADER_SIZE 263
 
 #define DEFAULT_AMP 4
 #define DEFAULT_MASTER_VOL 256
@@ -24,6 +16,8 @@
 #include "pmp_mix.h"
 #include "snd_masm.h"
 #include "tables.h"
+
+#define INSTR_HEADER_SIZE 263
 
 #define SWAP16(value) \
 ( \
@@ -145,8 +139,7 @@ uint16_t pattLens[256];
 int16_t PMPTmpActiveChannel, boostLevel = DEFAULT_AMP;
 int32_t masterVol = DEFAULT_MASTER_VOL, PMPLeft = 0;
 int32_t realReplayRate, quickVolSizeVal, speedVal;
-int32_t frequenceDivFactor, frequenceMulFactor;
-uint32_t CDA_Amp = 8*DEFAULT_AMP;
+uint32_t frequenceDivFactor, frequenceMulFactor, CDA_Amp = 8*DEFAULT_AMP;
 tonTyp *patt[256];
 instrTyp *instr[1+128];
 songTyp song;
@@ -191,7 +184,7 @@ static void fixSample(sampleTyp *s)
 	if (s->pek == NULL)
 		return; // empty sample
 
-	const bool sample16Bit = (s->typ >> 4) & 1;
+	const bool sample16Bit = !!(s->typ & SAMPLE_16BIT);
 	uint8_t loopType = s->typ & 3;
 	int16_t *ptr16 = (int16_t *)s->pek;
 	int32_t len = s->len;
@@ -518,6 +511,10 @@ static bool loadInstrHeader(MEMFILE *f, uint16_t i)
 	memset(&ih, 0, INSTR_HEADER_SIZE);
 	mread(&ih.instrSize, 4, 1, f);
 	if (ih.instrSize > INSTR_HEADER_SIZE) ih.instrSize = INSTR_HEADER_SIZE;
+
+	if (ih.instrSize < 4) // 8bb: added protection
+		return false;
+
 	mread(ih.name, ih.instrSize-4, 1, f);
 
 	if (ih.antSamp > 16)
@@ -589,12 +586,14 @@ static bool loadInstrSample(MEMFILE *f, uint16_t i)
 	{
 		if (s->len > 0)
 		{
-			s->pek = (int8_t *)malloc(s->len+2); // 8bb: +2 for linear interpolation point fix
+			bool sample16Bit = !!(s->typ & SAMPLE_16BIT);
+
+			s->pek = (int8_t *)malloc(s->len+2); // 8bb: +2 for fixed interpolation tap sample
 			if (s->pek == NULL)
 				return false;
 
 			mread(s->pek, 1, s->len, f);
-			delta2Samp(s->pek, s->len, (s->typ >> 4) & 1);
+			delta2Samp(s->pek, s->len, sample16Bit);
 		}
 
 		checkSampleRepeat(i, j);
@@ -906,14 +905,13 @@ bool loadMusicFromData(const uint8_t *data, uint32_t dataLength) // .XM/.MOD/.FT
 {
 	uint16_t i;
 	songHeaderTyp h;
-	MEMFILE *f;
 
 	freeMusic();
 	setFrqTab(false);
 
 	moduleLoaded = false;
 
-	f = mopen(data, dataLength);
+	MEMFILE *f = mopen(data, dataLength);
 	if (f == NULL)
 		return false;
 
@@ -1182,8 +1180,8 @@ void updateReplayRate(void)
 	lockMixer();
 
 	// 8bb: bit-exact to FT2
-	frequenceDivFactor = (int32_t)round(65536.0*1712.0/realReplayRate*8363.0);
-	frequenceMulFactor = (int32_t)round(256.0*65536.0/realReplayRate*8363.0);
+	frequenceDivFactor = (uint32_t)round(65536.0*1712.0/realReplayRate*8363.0);
+	frequenceMulFactor = (uint32_t)round(256.0*65536.0/realReplayRate*8363.0);
 
 	unlockMixer();
 }

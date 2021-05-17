@@ -15,6 +15,9 @@ bool createSingleThread(void (*threadFunc)(void *arg));
 
 #else
 
+#define _stricmp strcasecmp
+#define _strnicmp strncasecmp
+
 bool createSingleThread(void *(*threadFunc)(void *arg));
 
 #include <signal.h>

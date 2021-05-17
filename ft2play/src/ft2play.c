@@ -198,35 +198,35 @@ static void handleArguments(int argc, char *argv[])
 	{
 		for (int32_t i = 1; i < argc; i++)
 		{
-			if (!strcmp(argv[i], "-f") && i+1 < argc)
+			if (!_stricmp(argv[i], "-f") && i+1 < argc)
 			{
 				const int32_t num = atoi(argv[i+1]);
 				mixingFrequency = CLAMP(num, 8000, 96000);
 			}
-			else if (!strcmp(argv[i], "-b") && i+1 < argc)
+			else if (!_stricmp(argv[i], "-b") && i+1 < argc)
 			{
 				const int32_t num = atoi(argv[i+1]);
 				mixingBufferSize = CLAMP(num, 256, 8192);
 			}
-			else if (!strcmp(argv[i], "-a") && i+1 < argc)
+			else if (!_stricmp(argv[i], "-a") && i+1 < argc)
 			{
 				const int32_t num = atoi(argv[i+1]);
 				mixingAmp = CLAMP(num, 1, 32);
 			}
-			else if (!strcmp(argv[i], "-m") && i+1 < argc)
+			else if (!_stricmp(argv[i], "-m") && i+1 < argc)
 			{
 				const int32_t num = atoi(argv[i+1]);
 				masterVolume = CLAMP(num, 0, 256);
 			}
-			else if (!strcmp(argv[i], "--no-intrp"))
+			else if (!_stricmp(argv[i], "--no-intrp"))
 			{
 				interpolation = false;
 			}
-			else if (!strcmp(argv[i], "--no-vramp"))
+			else if (!_stricmp(argv[i], "--no-vramp"))
 			{
 				volumeRamping = false;
 			}
-			else if (!strcmp(argv[i], "--render-to-wav"))
+			else if (!_stricmp(argv[i], "--render-to-wav"))
 			{
 				renderToWavFlag = true;
 			}

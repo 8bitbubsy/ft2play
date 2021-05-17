@@ -164,12 +164,12 @@ int main(int argc, char *argv[])
 static void showUsage(void)
 {
 	printf("Usage:\n");
-	printf("  ft2play input_module [-f mixfreq] [-b buffersize] [-a amp] [-m mastervol]\n");
+	printf("  ft2play input_module [-f hz] [-b buffersize] [-a amp] [-m mastervol]\n");
 	printf("  ft2play input_module [--no-intrp] [--no-vramp] [--render-to-wav]\n");
 	printf("\n");
 	printf("  Options:\n");
 	printf("    input_module     Specifies the module file to load (.XM/.MOD/.FT supported)\n");
-	printf("    -f mixreq        Specifies the mixing frequency (8000..96000)\n");
+	printf("    -f hz            Specifies the mixing frequency (8000..96000)\n");
 	printf("    -b buffersize    Specifies the mixing buffer size (256..8192)\n");
 	printf("    -a amp           Specifies the mixing amplitude (1..32)\n");
 	printf("    -m mastervol     Specifies the mixing master volume (0..256). This setting\n");

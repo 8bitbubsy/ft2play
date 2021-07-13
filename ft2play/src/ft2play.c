@@ -14,7 +14,7 @@
 // defaults when not overriden by argument switches
 #define DEFAULT_MIX_FREQ 44100
 #define DEFAULT_MIX_BUFSIZE 1024
-#define DEFAULT_MIX_AMP 4
+#define DEFAULT_MIX_AMP 10
 #define DEFAULT_MASTERVOL 256
 #define DEFAULT_INTRP_FLAG true
 #define DEFAULT_VRAMP_FLAG true

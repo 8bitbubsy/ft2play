@@ -2,7 +2,7 @@
 Aims to be a bit-accurate C port of Fasttracker 2.09's XM replayer (SB16/WAV render mode). \
 This is a direct port of the original asm/Pascal source codes. \
 \
-The project contains example code in the ft2play folder on how to interface with the API. \
+The project contains example code in the ft2play folder on how to interface with the API.
 
 # Notes
 - To compile ft2play (the test program) on macOS/Linux, you need SDL2

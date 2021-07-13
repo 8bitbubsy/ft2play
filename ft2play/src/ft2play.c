@@ -120,13 +120,13 @@ int main(int argc, char *argv[])
 	printf("Mixing frequency: %dHz\n", realReplayRate);
 	printf("Linear interpolation: %s\n", interpolation ? "On" : "Off");
 	printf("Volume ramping: %s\n", volumeRamping ? "On" : "Off");
-	printf("Mixing amp: %d/32\n", boostLevel);
-	printf("Mixing volume: %d/256\n", masterVol);
+	printf("Mixing amp: %d\n", boostLevel);
+	printf("Mixing volume: %d\n", masterVol);
 	printf("\n");
 	printf("Name: %s\n", song.name);
-	printf("Channels: %d/32\n", song.antChn);
-	printf("Instruments: %d/128\n", song.antInstrs);
-	printf("Song length: %d/255 (restart pos: %d)\n", song.len, song.repS);
+	printf("Channels: %d\n", song.antChn);
+	printf("Instruments: %d\n", song.antInstrs);
+	printf("Song length: %d (restart pos: %d)\n", song.len, song.repS);
 	printf("\n");
 
 	printf("- STATUS -\n");

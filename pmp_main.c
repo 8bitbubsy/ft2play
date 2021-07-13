@@ -148,7 +148,7 @@ uint32_t getFrequenceValue(uint16_t period) // 8bb: converts period to 16.16fp r
 
 static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 {
-	if (ton == NOTE_OFF)
+	if (ton == NOTE_KEYOFF)
 	{
 		keyOff(ch);
 		return;
@@ -878,7 +878,7 @@ static void fixTonePorta(stmTyp *ch, const tonTyp *p, uint8_t inst)
 {
 	if (p->ton > 0)
 	{
-		if (p->ton == NOTE_OFF)
+		if (p->ton == NOTE_KEYOFF)
 		{
 			keyOff(ch);
 		}
@@ -903,7 +903,7 @@ static void fixTonePorta(stmTyp *ch, const tonTyp *p, uint8_t inst)
 	{
 		retrigVolume(ch);
 
-		if (p->ton != NOTE_OFF)
+		if (p->ton != NOTE_KEYOFF)
 			retrigEnvelopeVibrato(ch);
 	}
 }
@@ -934,7 +934,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 	ch->eff = p->eff;
 	ch->tonTyp = (p->instr << 8) | p->ton;
 
-	// 8bb: 'inst' var is used for later if checks...
+	// 8bb: 'inst' var is used for later if-checks
 	uint8_t inst = p->instr;
 	if (inst > 0)
 	{
@@ -1000,7 +1000,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 		}
 	}
 
-	if (p->ton == NOTE_OFF)
+	if (p->ton == NOTE_KEYOFF)
 		keyOff(ch);
 	else
 		startTone(p->ton, p->effTyp, p->eff, ch);
@@ -1008,7 +1008,7 @@ static void getNewNote(stmTyp *ch, const tonTyp *p)
 	if (inst > 0)
 	{
 		retrigVolume(ch);
-		if (p->ton != NOTE_OFF)
+		if (p->ton != NOTE_KEYOFF)
 			retrigEnvelopeVibrato(ch);
 	}
 
@@ -1294,7 +1294,8 @@ static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 	const int32_t fineTune = ((int8_t)ch->fineTune >> 3) + 16;
 	
 	/* 8bb: FT2 bug, should've been 10*12*16. Notes above B-7 (95) will have issues.
-	** You can only achieve such high notes by having a high relative note setting.
+	** You can only achieve such high notes by having a high relative note value
+	** in the sample.
 	*/
 	int32_t hiPeriod = 8*12*16;
 	
@@ -1306,7 +1307,7 @@ static uint16_t relocateTon(uint16_t period, uint8_t arpNote, stmTyp *ch)
 
 		int32_t lookUp = tmpPeriod - 8;
 		if (lookUp < 0)
-			lookUp = 0; // 8bb: safety fix (C-0 w/ finetune <= -65). This buggy read seems to return 0 in FT2 (TODO: Verify...)
+			lookUp = 0; // 8bb: safety fix (C-0 w/ ftune <= -65). This buggy read seems to return 0 in FT2 (TODO: verify)
 
 		if (period >= note2Period[lookUp])
 			hiPeriod = (tmpPeriod - fineTune) & ~15;
@@ -1771,9 +1772,6 @@ static void doEffects(stmTyp *ch) // tick>0 effect handling
 
 static void getNextPos(void)
 {
-	if (song.timer != 1)
-		return;
-
 	song.pattPos++;
 
 	if (song.pattDelTime > 0)
@@ -1850,5 +1848,6 @@ void mainPlayer(void)
 		}
 	}
 
-	getNextPos();
+	if (song.timer == 1)
+		getNextPos();
 }

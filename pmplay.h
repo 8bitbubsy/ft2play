@@ -23,7 +23,7 @@ enum // voice flags
 
 enum // note
 {
-	NOTE_OFF = 97
+	NOTE_KEYOFF = 97
 };
 
 enum // header flags

@@ -6,6 +6,7 @@ The project contains example code in the ft2play folder on how to interface with
 
 # Notes
 - To compile ft2play (the test program) on macOS/Linux, you need SDL2
+- When compiling, you need to pass the driver to use as a compiler pre-processor definition (f.ex. AUDIODRIVER_WINMM, check "pmplay.h")
 - This is <i>not</i> the same replayer/mixer code used in the FT2 clone (the FT2 clone also uses a port, but it has some audio precision improvements)
 - The accuracy has only been compared against a handful of songs
 - The code may not be 100% thread-safe, and as such I don't really recommend using this replayer in other projects

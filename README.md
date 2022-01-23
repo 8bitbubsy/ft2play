@@ -9,7 +9,7 @@ The project contains example code in the ft2play folder on how to interface with
 - When compiling, you need to pass the driver to use as a compiler pre-processor definition (f.ex. AUDIODRIVER_WINMM, check "pmplay.h")
 - This is <i>not</i> the same replayer/mixer code used in the FT2 clone (the FT2 clone also uses a port, but it has some audio precision improvements)
 - The accuracy has only been compared against a handful of songs
-- The code may not be 100% thread-safe, and as such I don't really recommend using this replayer in other projects
+- The code may not be 100% thread-safe (or safe in general), and as such I don't really recommend using this replayer in other projects. My primary goal was to create an accurate C port that people can use for reference.
 
 # How to test accuracy
 1) Open FT2.08 or FT2.09 (use a fresh program start for every render) and load an XM/MOD module. Make sure "Stereo" and "Interpolation" are enabled in the config screen

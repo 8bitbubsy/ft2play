@@ -48,11 +48,11 @@ void wavRecordingThread(void *arg)
 void *wavRecordingThread(void *arg)
 #endif
 {
+	(void)arg;
 	WAVDump_Record(WAVRenderFilename);
 #ifndef _WIN32
 	return NULL;
 #endif
-	(void)arg;
 }
 
 #ifndef _WIN32

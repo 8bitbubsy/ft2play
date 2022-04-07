@@ -511,7 +511,7 @@ static void mix16bCenter(CIType *v, uint32_t numSamples, uint32_t bufferPos)
 {
 	int32_t sample;
 
-GET_VOL_CENTER
+	GET_VOL_CENTER
 	GET_MIXER_VARS
 	SET_BASE16
 

@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
 void closeSingleThread(void);
 
 #ifdef _WIN32 

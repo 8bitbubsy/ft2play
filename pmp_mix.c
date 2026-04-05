@@ -8,9 +8,6 @@
 #include "snd_masm.h"
 #include "tables.h"
 
-// fast 32-bit -> 16-bit clamp
-#define CLAMP16(i) if ((int16_t)(i) != i) i = 0x7FFF ^ (i >> 31)
-
 static bool dump_Flag;
 static int32_t oldReplayRate;
 
@@ -300,7 +297,7 @@ void mix_UpdateBuffer(int16_t *buffer, int32_t numSamples)
 		for (int32_t i = 0; i < numSamples; i++)
 		{
 			int32_t out32 = CDA_MixBuffer[i] >> 8;
-			CLAMP16(out32);
+			out32 = CLAMP(out32, INT16_MIN, INT16_MAX);
 			buffer[i] = (int16_t)out32;
 		}
 	}
@@ -309,7 +306,7 @@ void mix_UpdateBuffer(int16_t *buffer, int32_t numSamples)
 		for (int32_t i = 0; i < numSamples; i++)
 		{
 			int32_t out32 = CDA_MixBuffer[i] >> 8;
-			CLAMP16(out32);
+			out32 = CLAMP(out32, INT16_MIN, INT16_MAX);
 			out32 = (out32 * masterVol) >> 8;
 			buffer[i] = (int16_t)out32;
 		}
@@ -373,7 +370,7 @@ int32_t dump_GetFrame(int16_t *p) // 8bb: returns bytes mixed to 16-bit stereo b
 	for (int32_t i = 0; i < numSamples; i++)
 	{
 		int32_t out32 = CDA_MixBuffer[i] >> 8;
-		CLAMP16(out32);
+		out32 = CLAMP(out32, INT16_MIN, INT16_MAX);
 		p[i] = (int16_t)out32;
 	}
 

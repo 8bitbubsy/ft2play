@@ -62,17 +62,17 @@ static void retrigEnvelopeVibrato(stmTyp *ch)
 
 	if (ins->envVTyp & ENV_ENABLED)
 	{
-		ch->envVCnt = 65535;
+		ch->envVCnt = 65535; // 8bb: will be increased to 0 on envelope handling
 		ch->envVPos = 0;
 	}
 
 	if (ins->envPTyp & ENV_ENABLED)
 	{
-		ch->envPCnt = 65535;
+		ch->envPCnt = 65535; // 8bb: will be increased to 0 on envelope handling
 		ch->envPPos = 0;
 	}
 
-	ch->fadeOutSpeed = ins->fadeOut; // 8bb: ranges 0..4095 (FT2 doesn't check if it's higher than 4095!)
+	ch->fadeOutSpeed = ins->fadeOut;
 
 	// 8bb: final fadeout range is in fact 0..32768, and not 0..65536 like the XM format doc says
 	ch->fadeOutAmp = 32768;
@@ -98,7 +98,7 @@ static void keyOff(stmTyp *ch)
 {
 	instrTyp *ins = ch->instrSeg;
 
-	if (!(ins->envPTyp & ENV_ENABLED)) // 8bb: probably an FT2 bug
+	if (!(ins->envPTyp & ENV_ENABLED)) // 8bb: FT2 logic bug!
 	{
 		if (ch->envPCnt >= (uint16_t)ins->envPP[ch->envPPos][0])
 			ch->envPCnt = ins->envPP[ch->envPPos][0]-1;
@@ -133,10 +133,10 @@ uint32_t getFrequenceValue(uint16_t period) // 8bb: converts period to 16.16fp r
 		const uint32_t quotient = invPeriod / 768;
 		const uint32_t remainder = invPeriod % 768;
 
-		const int32_t octShift = 14 - quotient;
+		const int32_t octShift = (14 - quotient) & 31; // 8bb: added needed 32-bit bitshift mask
 
 		delta = (uint32_t)(((int64_t)logTab[remainder] * (int32_t)frequenceMulFactor) >> 24);
-		delta >>= (octShift & 31); // 8bb: added needed 32-bit bitshift mask
+		delta >>= octShift;
 	}
 	else
 	{
@@ -178,7 +178,7 @@ static void startTone(uint8_t ton, uint8_t effTyp, uint8_t eff, stmTyp *ch)
 	ch->relTonNr = s->relTon;
 
 	ton += ch->relTonNr;
-	if (ton >= 10*12)
+	if (ton >= 10*12) // 8bb: unsigned check (also handles note < 0)
 		return;
 
 	ch->oldVol = s->vol;
@@ -416,9 +416,9 @@ static void setGlobaVol(stmTyp *ch, uint8_t param)
 
 static void setEnvelopePos(stmTyp *ch, uint8_t param)
 {
-	int8_t envPos;
 	bool envUpdate;
-	int16_t newEnvPos;
+	int8_t point;
+	int16_t tick;
 
 	instrTyp *ins = ch->instrSeg;
 
@@ -427,133 +427,148 @@ static void setEnvelopePos(stmTyp *ch, uint8_t param)
 	{
 		ch->envVCnt = param - 1;
 
-		envPos = 0;
+		point = 0;
 		envUpdate = true;
-		newEnvPos = param;
+		tick = param;
 
 		if (ins->envVPAnt > 1)
 		{
-			envPos++;
+			point++;
 			for (int32_t i = 0; i < ins->envVPAnt-1; i++)
 			{
-				if (newEnvPos < ins->envVP[envPos][0])
+				if (tick < ins->envVP[point][0])
 				{
-					envPos--;
+					point--;
 
-					newEnvPos -= ins->envVP[envPos][0];
-					if (newEnvPos == 0)
+					tick -= ins->envVP[point][0];
+					if (tick == 0) // 8bb: FT2 doesn't test for <= 0 here
 					{
 						envUpdate = false;
 						break;
 					}
 
-					if (ins->envVP[envPos+1][0] <= ins->envVP[envPos][0])
+					const int16_t x0 = ins->envVP[point+0][0];
+					const int16_t x1 = ins->envVP[point+1][0];
+
+					const int16_t xDiff = x1 - x0;
+					if (xDiff <= 0)
 					{
 						envUpdate = true;
 						break;
 					}
 
-					ch->envVIPValue = ((ins->envVP[envPos+1][1] - ins->envVP[envPos][1]) & 0xFF) << 8;
-					ch->envVIPValue /= (ins->envVP[envPos+1][0] - ins->envVP[envPos][0]);
+					const int16_t y0 = ins->envVP[point+0][1];
+					const int16_t y1 = ins->envVP[point+1][1];
 
-					ch->envVAmp = (ch->envVIPValue * (newEnvPos - 1)) + ((ins->envVP[envPos][1] & 0xFF) << 8);
+					const int8_t yDiff = (int8_t)(y1 - y0);
+					ch->envVIPValue = (yDiff << 8) / xDiff;
 
-					envPos++;
+					ch->envVAmp = ((int8_t)y0 << 8) + (int16_t)(ch->envVIPValue * (tick-1));
+
+					point++;
 
 					envUpdate = false;
 					break;
 				}
 
-				envPos++;
+				point++;
 			}
 
 			if (envUpdate)
-				envPos--;
+				point--;
 		}
 
 		if (envUpdate)
 		{
 			ch->envVIPValue = 0;
-			ch->envVAmp = (ins->envVP[envPos][1] & 0xFF) << 8;
+			ch->envVAmp = (int8_t)ins->envVP[point][1] << 8;
 		}
 
-		if (envPos >= ins->envVPAnt)
+		if (point >= ins->envVPAnt)
 		{
-			envPos = ins->envVPAnt - 1;
-			if (envPos < 0)
-				envPos = 0;
+			point = ins->envVPAnt - 1;
+			if (point < 0)
+				point = 0;
 		}
 
-		ch->envVPos = envPos;
+		ch->envVPos = point;
 	}
 
 	// *** PANNING ENVELOPE ***
-	if (ins->envVTyp & ENV_SUSTAIN) // 8bb: FT2 bug? (should probably have been "ins->envPTyp & ENV_ENABLED")
+	if (ins->envVTyp & ENV_SUSTAIN) // 8bb: FT2 logic bug, should've been ins->envPTyp
 	{
 		ch->envPCnt = param - 1;
 
-		envPos = 0;
+		point = 0;
 		envUpdate = true;
-		newEnvPos = param;
+		tick = param;
 
 		if (ins->envPPAnt > 1)
 		{
-			envPos++;
+			point++;
 			for (int32_t i = 0; i < ins->envPPAnt-1; i++)
 			{
-				if (newEnvPos < ins->envPP[envPos][0])
+				if (tick < ins->envPP[point][0])
 				{
-					envPos--;
+					point--;
 
-					newEnvPos -= ins->envPP[envPos][0];
-					if (newEnvPos == 0)
+					tick -= ins->envPP[point][0];
+					if (tick == 0) // 8bb: FT2 doesn't test for <= 0 here
 					{
 						envUpdate = false;
 						break;
 					}
 
-					if (ins->envPP[envPos + 1][0] <= ins->envPP[envPos][0])
+					const int16_t x0 = ins->envPP[point+0][0];
+					const int16_t x1 = ins->envPP[point+1][0];
+
+					const int16_t xDiff = x1 - x0;
+					if (xDiff <= 0)
 					{
 						envUpdate = true;
 						break;
 					}
 
-					ch->envPIPValue = ((ins->envPP[envPos+1][1] - ins->envPP[envPos][1]) & 0xFF) << 8;
-					ch->envPIPValue /= (ins->envPP[envPos+1][0] - ins->envPP[envPos][0]);
+					const int16_t y0 = ins->envPP[point+0][1];
+					const int16_t y1 = ins->envPP[point+1][1];
 
-					ch->envPAmp = (ch->envPIPValue * (newEnvPos - 1)) + ((ins->envPP[envPos][1] & 0xFF) << 8);
+					const int8_t yDiff = (int8_t)(y1 - y0);
+					ch->envPIPValue = (yDiff << 8) / xDiff;
 
-					envPos++;
+					ch->envPAmp = ((int8_t)y0 << 8) + (int16_t)(ch->envPIPValue * (tick-1));
+
+					point++;
 
 					envUpdate = false;
 					break;
 				}
 
-				envPos++;
+				point++;
 			}
 
 			if (envUpdate)
-				envPos--;
+				point--;
 		}
 
 		if (envUpdate)
 		{
 			ch->envPIPValue = 0;
-			ch->envPAmp = (ins->envPP[envPos][1] & 0xFF) << 8;
+			ch->envPAmp = (int8_t)ins->envPP[point][1] << 8;
 		}
 
-		if (envPos >= ins->envPPAnt)
+		if (point >= ins->envPPAnt)
 		{
-			envPos = ins->envPPAnt - 1;
-			if (envPos < 0)
-				envPos = 0;
+			point = ins->envPPAnt - 1;
+			if (point < 0)
+				point = 0;
 		}
 
-		ch->envPPos = envPos;
+		ch->envPPos = point;
 	}
 }
 
-/* -- tick-zero volume column effects --
+/* 8bb:
+** -- tick-zero volume column effects --
 ** 2nd parameter is used for a volume column quirk with the Rxy command (multiretrig)
 */
 
@@ -1019,8 +1034,8 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 {
 	bool envInterpolateFlag, envDidInterpolate;
 	uint8_t envPos;
-	int16_t autoVibVal;
-	uint16_t autoVibAmp, envVal;
+	int16_t autoVibVal, envVal;
+	uint16_t autoVibAmp;
 	uint32_t vol;
 
 	instrTyp *ins = ch->instrSeg;
@@ -1030,14 +1045,14 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 	{
 		ch->status |= IS_Vol;
 
-		if (ch->fadeOutAmp >= ch->fadeOutSpeed)
-		{
-			ch->fadeOutAmp -= ch->fadeOutSpeed;
-		}
-		else
+		if (ch->fadeOutSpeed > ch->fadeOutAmp) // 8bb: ch->fadeOutAmp-ch->fadeOutSpeed < 0?
 		{
 			ch->fadeOutAmp = 0;
 			ch->fadeOutSpeed = 0;
+		}
+		else
+		{
+			ch->fadeOutAmp -= ch->fadeOutSpeed;
 		}
 	}
 
@@ -1052,7 +1067,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 
 			if (++ch->envVCnt == ins->envVP[envPos][0])
 			{
-				ch->envVAmp = ins->envVP[envPos][1] << 8;
+				ch->envVAmp = (int8_t)ins->envVP[envPos][1] << 8;
 
 				envPos++;
 				if (ins->envVTyp & ENV_LOOP)
@@ -1066,7 +1081,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 							envPos = ins->envVRepS;
 
 							ch->envVCnt = ins->envVP[envPos][0];
-							ch->envVAmp = ins->envVP[envPos][1] << 8;
+							ch->envVAmp = (int8_t)ins->envVP[envPos][1] << 8;
 						}
 					}
 
@@ -1090,14 +1105,24 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 					{
 						ch->envVPos = envPos;
 
-						ch->envVIPValue = 0;
-						if (ins->envVP[envPos][0] > ins->envVP[envPos-1][0])
+						const int16_t x0 = ins->envVP[envPos-1][0];
+						const int16_t x1 = ins->envVP[envPos-0][0];
+
+						const int16_t xDiff = x1 - x0;
+						if (xDiff > 0)
 						{
-							ch->envVIPValue = (ins->envVP[envPos][1] - ins->envVP[envPos-1][1]) << 8;
-							ch->envVIPValue /= (ins->envVP[envPos][0] - ins->envVP[envPos-1][0]);
+							const int16_t y0 = ins->envVP[envPos-1][1];
+							const int16_t y1 = ins->envVP[envPos-0][1];
+
+							const int8_t yDiff = (int8_t)(y1 - y0);
+							ch->envVIPValue = (yDiff << 8) / xDiff;
 
 							envVal = ch->envVAmp;
 							envDidInterpolate = true;
+						}
+						else
+						{
+							ch->envVIPValue = 0;
 						}
 					}
 				}
@@ -1110,11 +1135,13 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 			if (!envDidInterpolate)
 			{
 				ch->envVAmp += ch->envVIPValue;
-
 				envVal = ch->envVAmp;
-				if (envVal > 64*256)
+
+				// 8bb: FT2 tests the upper byte here (unsigned test!)
+				uint8_t envHiByte = (uint8_t)(envVal >> 8);
+				if (envHiByte > 64)
 				{
-					if (envVal > 128*256)
+					if (envHiByte <= 160) // 8bb: 160 unsigned is -64 signed
 						envVal = 64*256;
 					else
 						envVal = 0;
@@ -1136,7 +1163,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 			vol = (vol * song.globVol) >> 7;
 		}
 
-		ch->finalVol = (uint16_t)vol; // 0..256
+		ch->finalVol = (uint16_t)vol; // 8bb: 0..256
 	}
 	else
 	{
@@ -1153,7 +1180,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 
 		if (++ch->envPCnt == ins->envPP[envPos][0])
 		{
-			ch->envPAmp = ins->envPP[envPos][1] << 8;
+			ch->envPAmp = (int8_t)ins->envPP[envPos][1] << 8;
 
 			envPos++;
 			if (ins->envPTyp & ENV_LOOP)
@@ -1167,7 +1194,7 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 						envPos = ins->envPRepS;
 
 						ch->envPCnt = ins->envPP[envPos][0];
-						ch->envPAmp = ins->envPP[envPos][1] << 8;
+						ch->envPAmp = (int8_t)ins->envPP[envPos][1] << 8;
 					}
 				}
 
@@ -1191,14 +1218,24 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 				{
 					ch->envPPos = envPos;
 
-					ch->envPIPValue = 0;
-					if (ins->envPP[envPos][0] > ins->envPP[envPos-1][0])
+					const int16_t x0 = ins->envPP[envPos-1][0];
+					const int16_t x1 = ins->envPP[envPos-0][0];
+
+					const int16_t xDiff = x1 - x0;
+					if (xDiff > 0)
 					{
-						ch->envPIPValue = (ins->envPP[envPos][1] - ins->envPP[envPos-1][1]) << 8;
-						ch->envPIPValue /= (ins->envPP[envPos][0] - ins->envPP[envPos-1][0]);
+						const int16_t y0 = ins->envPP[envPos-1][1];
+						const int16_t y1 = ins->envPP[envPos-0][1];
+
+						const int8_t yDiff = (int8_t)(y1 - y0);
+						ch->envPIPValue = (yDiff << 8) / xDiff;
 
 						envVal = ch->envPAmp;
 						envDidInterpolate = true;
+					}
+					else
+					{
+						ch->envPIPValue = 0;
 					}
 				}
 			}
@@ -1211,11 +1248,13 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 		if (!envDidInterpolate)
 		{
 			ch->envPAmp += ch->envPIPValue;
-
 			envVal = ch->envPAmp;
-			if (envVal > 64*256)
+
+			// 8bb: FT2 tests the upper byte here (unsigned test!)
+			uint8_t envHiByte = (uint8_t)(envVal >> 8);
+			if (envHiByte > 64)
 			{
-				if (envVal > 128*256)
+				if (envHiByte <= 160) // 8bb: 160 unsigned is -64 signed
 					envVal = 64*256;
 				else
 					envVal = 0;
@@ -1228,11 +1267,12 @@ static void fixaEnvelopeVibrato(stmTyp *ch)
 		if (panTmp > 0)
 			panTmp = 0 - panTmp;
 		panTmp += 128;
-
 		panTmp <<= 3;
-		envVal -= 32*256;
 
-		ch->finalPan = ch->outPan + (uint8_t)(((int16_t)envVal * panTmp) >> 16);
+		envVal -= 32*256;
+		const int8_t panAdd = (int8_t)((envVal * panTmp) >> 16);
+
+		ch->finalPan = (uint8_t)(ch->outPan + panAdd);
 		ch->status |= IS_Pan;
 	}
 	else
